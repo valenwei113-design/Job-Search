@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Job Search Agent</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -20,14 +21,15 @@
 
     /* ── Sidebar ── */
     .sidebar {
-      width: 300px;
-      min-width: 300px;
+      width: 320px;
+      min-width: 320px;
       background: #ffffff;
       border-right: 1px solid #e5e7eb;
       display: flex;
       flex-direction: column;
-      padding: 28px 20px;
-      gap: 28px;
+      padding: 20px 16px;
+      gap: 16px;
+      overflow-y: auto;
     }
 
     .logo {
@@ -37,33 +39,21 @@
     }
 
     .logo-icon {
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border-radius: 10px;
+      border-radius: 9px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-    }
-
-    .logo-text {
       font-size: 16px;
-      font-weight: 600;
-      letter-spacing: -0.3px;
-      color: #111827;
+      flex-shrink: 0;
     }
 
-    .logo-sub {
-      font-size: 11px;
-      color: #9ca3af;
-      margin-top: 1px;
-    }
+    .logo-text { font-size: 15px; font-weight: 600; color: #111827; }
+    .logo-sub  { font-size: 11px; color: #9ca3af; margin-top: 1px; }
 
-    .divider {
-      height: 1px;
-      background: #f3f4f6;
-    }
+    .divider { height: 1px; background: #f3f4f6; }
 
     .section-title {
       font-size: 10px;
@@ -71,59 +61,39 @@
       letter-spacing: 1px;
       color: #9ca3af;
       text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
-    /* Stats */
-    .stats {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    /* Stat row */
+    .stat-row { display: flex; gap: 8px; }
 
     .stat-card {
+      flex: 1;
       background: #f9fafb;
       border: 1px solid #e5e7eb;
       border-radius: 10px;
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      padding: 12px;
     }
 
-    .stat-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 15px;
-      flex-shrink: 0;
-    }
+    .stat-value { font-size: 20px; font-weight: 700; color: #111827; line-height: 1; }
+    .stat-label { font-size: 10px; color: #9ca3af; margin-top: 4px; }
 
-    .stat-icon.purple { background: rgba(99,102,241,0.1); }
-    .stat-icon.green  { background: rgba(16,185,129,0.1); }
-    .stat-icon.amber  { background: rgba(245,158,11,0.1); }
-    .stat-icon.blue   { background: rgba(59,130,246,0.1); }
-
-    .stat-info {}
-    .stat-value { font-size: 18px; font-weight: 700; line-height: 1; color: #111827; }
-    .stat-label { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+    /* Charts */
+    .chart-block { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
+    .chart-block canvas { max-height: 140px; }
 
     /* Suggestions */
-    .suggestions { display: flex; flex-direction: column; gap: 6px; }
+    .suggestions { display: flex; flex-direction: column; gap: 5px; }
 
     .suggestion {
       background: #f9fafb;
       border: 1px solid #e5e7eb;
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 9px 11px;
       font-size: 12px;
       color: #374151;
       cursor: pointer;
-      transition: all 0.2s;
-      line-height: 1.4;
+      transition: all 0.15s;
     }
 
     .suggestion:hover {
@@ -132,11 +102,9 @@
       color: #4f46e5;
     }
 
-    .suggestion .s-icon { margin-right: 6px; }
-
-    /* Powered by */
     .powered {
       margin-top: auto;
+      padding-top: 8px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -146,29 +114,25 @@
 
     .powered span { color: #9ca3af; font-weight: 500; }
 
-    /* ── Main chat area ── */
+    /* ── Main ── */
     .main {
       flex: 1;
       display: flex;
       flex-direction: column;
       background: #f8f9fc;
-      position: relative;
     }
 
-    /* Top bar */
     .topbar {
-      padding: 18px 28px;
+      padding: 16px 24px;
       border-bottom: 1px solid #e5e7eb;
       display: flex;
       align-items: center;
       justify-content: space-between;
       background: #ffffff;
-      backdrop-filter: blur(10px);
     }
 
-    .topbar-left { display: flex; flex-direction: column; }
     .topbar-title { font-size: 15px; font-weight: 600; color: #111827; }
-    .topbar-sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+    .topbar-sub   { font-size: 12px; color: #9ca3af; margin-top: 2px; }
 
     .status-dot {
       display: flex;
@@ -179,8 +143,7 @@
     }
 
     .dot {
-      width: 7px;
-      height: 7px;
+      width: 7px; height: 7px;
       border-radius: 50%;
       background: #10b981;
       box-shadow: 0 0 6px #10b981;
@@ -189,42 +152,17 @@
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+      50%       { opacity: 0.4; }
     }
 
-    /* Iframe container */
-    .chat-container {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
+    .chat-container { flex: 1; overflow: hidden; }
+    .chat-container iframe { width: 100%; height: 100%; border: none; }
 
-    .chat-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
-    /* Gradient overlay at top */
-    .chat-container::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 40px;
-      background: linear-gradient(to bottom, #f8f9fc, transparent);
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 768px) {
-      .sidebar { display: none; }
-    }
+    @media (max-width: 768px) { .sidebar { display: none; } }
   </style>
 </head>
 <body>
 
-  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-icon">🔍</div>
@@ -236,38 +174,40 @@
 
     <div class="divider"></div>
 
-    <!-- Stats -->
+    <!-- Live stats -->
     <div>
       <div class="section-title">Overview</div>
-      <div class="stats">
+      <div class="stat-row">
         <div class="stat-card">
-          <div class="stat-icon purple">📋</div>
-          <div class="stat-info">
-            <div class="stat-value">268</div>
-            <div class="stat-label">Total Applications</div>
-          </div>
+          <div class="stat-value" id="val-total">—</div>
+          <div class="stat-label">Applications</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon blue">🌍</div>
-          <div class="stat-info">
-            <div class="stat-value">6</div>
-            <div class="stat-label">Countries Covered</div>
-          </div>
+          <div class="stat-value" id="val-pending">—</div>
+          <div class="stat-label">Pending</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon amber">⏳</div>
-          <div class="stat-info">
-            <div class="stat-value">—</div>
-            <div class="stat-label">Pending Feedback</div>
-          </div>
+          <div class="stat-value" id="val-countries">—</div>
+          <div class="stat-label">Countries</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon green">✅</div>
-          <div class="stat-info">
-            <div class="stat-value">—</div>
-            <div class="stat-label">Offers Received</div>
-          </div>
-        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Feedback pie -->
+    <div>
+      <div class="section-title">Feedback Status</div>
+      <div class="chart-block">
+        <canvas id="chartFeedback"></canvas>
+      </div>
+    </div>
+
+    <!-- Country bar -->
+    <div>
+      <div class="section-title">Top Countries</div>
+      <div class="chart-block">
+        <canvas id="chartCountries"></canvas>
       </div>
     </div>
 
@@ -277,64 +217,90 @@
     <div>
       <div class="section-title">Try asking</div>
       <div class="suggestions">
-        <div class="suggestion"><span class="s-icon">📊</span>我一共投了多少家公司？</div>
-        <div class="suggestion"><span class="s-icon">🌍</span>哪个国家投的最多？</div>
-        <div class="suggestion"><span class="s-icon">⏳</span>有多少家还没给反馈？</div>
-        <div class="suggestion"><span class="s-icon">🛂</span>哪个国家最容易拿工作签证？</div>
-        <div class="suggestion"><span class="s-icon">📅</span>最近投递了哪些职位？</div>
+        <div class="suggestion">📊 我一共投了多少家公司？</div>
+        <div class="suggestion">🌍 哪个国家投的最多？</div>
+        <div class="suggestion">⏳ 有多少家还没给反馈？</div>
+        <div class="suggestion">🛂 哪个国家最容易拿工作签证？</div>
+        <div class="suggestion">📅 最近投递了哪些职位？</div>
       </div>
     </div>
 
     <div class="powered">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-      Real-time data · <span>Live DB</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      Real-time · <span>Live DB</span>
     </div>
   </aside>
 
-  <!-- Main -->
   <main class="main">
     <div class="topbar">
-      <div class="topbar-left">
+      <div>
         <div class="topbar-title">Job Search Assistant</div>
         <div class="topbar-sub">Ask anything about your applications or work permits</div>
       </div>
-      <div class="status-dot">
-        <div class="dot"></div>
-        Online
-      </div>
+      <div class="status-dot"><div class="dot"></div>Online</div>
     </div>
-
     <div class="chat-container">
-      <iframe
-        src="http://localhost/chatbot/aPeOSTemhgI3UTkK"
-        allow="microphone">
-      </iframe>
+      <iframe src="http://localhost/chatbot/aPeOSTemhgI3UTkK" allow="microphone"></iframe>
     </div>
   </main>
 
 <script>
-  document.querySelectorAll('.suggestion').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const text = btn.innerText.replace(/^[\p{Emoji}\s]+/u, '').trim();
-      const iframe = document.querySelector('iframe');
-      // 聚焦 iframe 内的输入框并填入文字
-      iframe.contentWindow.postMessage({ type: 'dify-chatbot-send', message: text }, '*');
-      // 降级：直接操作 iframe DOM
-      try {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        const input = doc.querySelector('textarea') || doc.querySelector('input[type="text"]');
-        if (input) {
-          const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-          nativeSetter.call(input, text);
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          setTimeout(() => {
-            const sendBtn = doc.querySelector('button[type="submit"]') || doc.querySelector('button.send');
-            if (sendBtn) sendBtn.click();
-          }, 100);
-        }
-      } catch(e) {}
-    });
+const API = 'http://localhost:8000';
+
+async function loadStats() {
+  const s = await fetch(`${API}/stats/summary`).then(r => r.json());
+  document.getElementById('val-total').textContent     = s.total;
+  document.getElementById('val-pending').textContent   = s.pending;
+  document.getElementById('val-countries').textContent = s.countries;
+}
+
+async function loadFeedbackChart() {
+  const d = await fetch(`${API}/stats/feedback`).then(r => r.json());
+  new Chart(document.getElementById('chartFeedback'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Pending', 'Rejected'],
+      datasets: [{
+        data: [d.pending, d.rejected],
+        backgroundColor: ['#6366f1', '#f87171'],
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, color: '#6b7280', boxWidth: 12 } } },
+      cutout: '65%'
+    }
   });
+}
+
+async function loadCountriesChart() {
+  const data = await fetch(`${API}/stats/countries`).then(r => r.json());
+  new Chart(document.getElementById('chartCountries'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.location),
+      datasets: [{
+        data: data.map(d => d.count),
+        backgroundColor: '#6366f1',
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9ca3af' } },
+        y: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#374151' } }
+      }
+    }
+  });
+}
+
+loadStats();
+loadFeedbackChart();
+loadCountriesChart();
 </script>
 </body>
 </html>
