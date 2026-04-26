@@ -6,163 +6,220 @@
   <title>Job Track Agent</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Inter', -apple-system, sans-serif;
-      background: #f8f9fc;
+      background: #F5F0EA;
       height: 100vh;
       display: flex;
       overflow: hidden;
-      color: #111827;
+      color: #1A1614;
     }
 
     /* ── Sidebar ── */
     .sidebar {
-      width: 320px;
-      min-width: 320px;
-      background: #ffffff;
-      border-right: 1px solid #e5e7eb;
-      display: flex;
-      flex-direction: column;
-      padding: 20px 16px;
-      gap: 16px;
-      overflow-y: auto;
+      width: 300px; min-width: 300px;
+      background: #FDFCFA;
+      border-right: 1px solid #E8E0D5;
+      display: flex; flex-direction: column;
+      padding: 14px 16px; gap: 10px;
+      overflow: hidden;
     }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
+    .logo { display: flex; align-items: center; gap: 10px; }
     .logo-icon {
-      width: 34px;
-      height: 34px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      flex-shrink: 0;
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #B8965A, #8C6A3A);
+      border-radius: 9px; display: flex; align-items: center;
+      justify-content: center; font-size: 16px; flex-shrink: 0;
     }
-
-    .logo-text { font-size: 15px; font-weight: 600; color: #111827; }
-    .logo-sub  { font-size: 11px; color: #9ca3af; margin-top: 1px; }
-
-    .divider { height: 1px; background: #f3f4f6; }
-
+    .logo-text { font-size: 15px; font-weight: 600; color: #1A1614; font-family: 'Playfair Display', serif; }
+    .logo-sub  { font-size: 11px; color: #B5A99F; margin-top: 1px; }
+    .divider { height: 1px; background: #EDE6DC; }
     .section-title {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 1px;
-      color: #9ca3af;
-      text-transform: uppercase;
-      margin-bottom: 8px;
+      font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+      color: #B5A99F; text-transform: uppercase; margin-bottom: 8px;
     }
-
-    /* Stat row */
+    .add-btn {
+      width: 100%; padding: 10px;
+      background: #2C2421;
+      color: #F5F0EA; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+    }
+    .add-btn:hover { opacity: 0.85; }
     .stat-row { display: flex; gap: 8px; }
-
     .stat-card {
-      flex: 1;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 12px;
+      flex: 1; background: #F0EAE2; border: 1px solid #E8E0D5;
+      border-radius: 8px; padding: 8px 10px;
     }
-
-    .stat-value { font-size: 20px; font-weight: 700; color: #111827; line-height: 1; }
-    .stat-label { font-size: 10px; color: #9ca3af; margin-top: 4px; }
-
-    /* Charts */
-    .chart-block { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
-    .chart-block canvas { max-height: 140px; }
-
-    /* Suggestions */
-    .suggestions { display: flex; flex-direction: column; gap: 5px; }
-
-    .suggestion {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 9px 11px;
-      font-size: 12px;
-      color: #374151;
-      cursor: default;
-      transition: all 0.15s;
+    .stat-value { font-size: 17px; font-weight: 700; color: #1A1614; line-height: 1; }
+    .stat-label { font-size: 10px; color: #B5A99F; margin-top: 3px; }
+    .chart-block {
+      background: #F0EAE2; border: 1px solid #E8E0D5;
+      border-radius: 8px; padding: 10px;
     }
-
-    .suggestion:hover {
-      background: #eef2ff;
-      border-color: #c7d2fe;
-      color: #4f46e5;
-    }
-
-    .powered {
-      margin-top: auto;
-      padding-top: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: #d1d5db;
-    }
-
-    .powered span { color: #9ca3af; font-weight: 500; }
+    .chart-block canvas { max-height: 120px; }
+    .chart-block.countries-block { height: 260px; }
+    .chart-block.countries-block canvas { max-height: 260px; }
 
     /* ── Main ── */
     .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: #f8f9fc;
+      flex: 1; display: flex; flex-direction: column;
+      overflow: hidden; position: relative;
     }
 
+    /* Topbar */
     .topbar {
-      padding: 16px 24px;
-      border-bottom: 1px solid #e5e7eb;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #ffffff;
+      padding: 10px 24px; border-bottom: 1px solid #E8E0D5;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #FDFCFA; flex-shrink: 0;
     }
-
-    .topbar-title { font-size: 15px; font-weight: 600; color: #111827; }
-    .topbar-sub   { font-size: 12px; color: #9ca3af; margin-top: 2px; }
-
-    .status-dot {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: #6b7280;
-    }
-
+    .topbar-title { font-size: 15px; font-weight: 600; color: #1A1614; }
+    .topbar-sub   { font-size: 12px; color: #B5A99F; margin-top: 2px; }
+    .status-dot { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8C7F76; }
     .dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 6px #10b981;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #B8965A; box-shadow: 0 0 6px #B8965A;
       animation: pulse 2s infinite;
     }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.4; }
+    /* Applications list */
+    .list-area {
+      flex: 1; overflow-y: auto; padding: 8px 24px;
+      display: flex; flex-direction: column; gap: 10px;
     }
 
-    .chat-container { flex: 1; overflow: hidden; }
-    .chat-container iframe { width: 100%; height: 100%; border: none; }
+    /* Table header */
+    .list-header {
+      display: flex; align-items: center;
+      padding: 0 16px; height: 36px;
+      background: #EDE6DC; border: 1px solid #E8E0D5;
+      border-radius: 8px; margin: 14px 24px 2px; flex-shrink: 0;
+    }
+    .list-header span {
+      font-size: 12px; font-weight: 600; color: #8C7F76;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .app-card {
+      background: #FDFCFA; border: 1px solid #E8E0D5;
+      border-radius: 8px; padding: 12px 16px;
+      display: flex; align-items: center;
+      transition: box-shadow 0.15s;
+    }
+    .app-card:hover { box-shadow: 0 2px 8px rgba(44,36,33,0.08); background: #FAF6F1; }
+    .app-card.new-card { animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+
+    .col-company  { flex: 2; font-size: 13px; font-weight: 600; color: #1A1614; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+    .col-position { flex: 2; font-size: 12px; color: #8C7F76; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+    .col-location { flex: 1; font-size: 12px; color: #8C7F76; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+    .col-worktype { flex: 1; font-size: 12px; color: #8C7F76; padding-right: 8px; }
+    .col-link     { flex: 1; padding-right: 8px; }
+    .col-link a   { font-size: 12px; color: #B8965A; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
+    .col-link a:hover { text-decoration: underline; }
+    .col-date     { flex: 1; font-size: 12px; color: #B5A99F; padding-right: 8px; }
+    .col-feedback { flex: 1; }
+
+    .app-badge {
+      font-size: 11px; font-weight: 500; padding: 3px 8px;
+      border-radius: 20px; display: inline-block;
+    }
+    .badge-pending { background: #F2E8D5; color: #8C6A3A; }
+    .badge-fail    { background: #F2E0DC; color: #8C3A3A; }
+    .badge-offer   { background: #DCF0E4; color: #3A7A52; }
+
+    /* ── Chat overlay ── */
+    .chat-sidebar {
+      position: absolute; inset: 0;
+      background: #FDFCFA;
+      display: flex; flex-direction: column;
+      z-index: 20;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .chat-sidebar.hidden {
+      opacity: 0; pointer-events: none;
+      transform: translateY(6px);
+    }
+    .chat-close-float {
+      position: absolute; top: 12px; right: 12px; z-index: 30;
+      width: 28px; height: 28px; border-radius: 6px;
+      border: 1px solid #E8E0D5; background: #FDFCFA;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: #8C7F76;
+      box-shadow: 0 1px 4px rgba(44,36,33,0.08);
+      transition: background 0.15s;
+    }
+    .chat-close-float:hover { background: #F0EAE2; }
+
+    .chat-header {
+      padding: 0 16px; height: 44px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #E8E0D5; background: #FDFCFA;
+    }
+    .chat-header-left { font-size: 13px; font-weight: 600; color: #1A1614; }
+    .chat-close-btn {
+      width: 24px; height: 24px; border-radius: 5px;
+      border: none; background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; color: #B5A99F; transition: color 0.15s, background 0.15s;
+    }
+    .chat-close-btn:hover { background: #F0EAE2; color: #8C7F76; }
+
+    .chat-iframe-wrap { flex: 1; overflow: hidden; }
+    .chat-iframe-wrap iframe { width: 100%; height: 100%; border: none; }
+
+    /* Ask AI toggle button */
+    .ask-ai-btn {
+      padding: 7px 14px; border-radius: 7px;
+      background: #B8965A;
+      color: #fff; border: none; font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+    }
+    .ask-ai-btn:hover { opacity: 0.85; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(26,22,20,0.45); z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #FDFCFA; border-radius: 14px; padding: 28px;
+      width: 460px; max-width: 95vw;
+      box-shadow: 0 20px 60px rgba(26,22,20,0.18);
+    }
+    .modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 20px; color: #1A1614; font-family: 'Playfair Display', serif; }
+    .form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+    .form-row label { font-size: 11px; font-weight: 600; color: #8C7F76; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-row input {
+      padding: 9px 12px; border: 1px solid #E8E0D5; border-radius: 7px;
+      font-size: 13px; color: #1A1614; outline: none; transition: border-color 0.15s;
+      background: #FAF7F2;
+    }
+    .form-row input:focus { border-color: #B8965A; }
+    .form-actions { display: flex; gap: 8px; margin-top: 20px; }
+    .btn-cancel {
+      flex: 1; padding: 10px; background: #EDE6DC; border: none;
+      border-radius: 7px; font-size: 13px; cursor: pointer; color: #8C7F76;
+    }
+    .btn-save {
+      flex: 2; padding: 10px;
+      background: #2C2421;
+      border: none; border-radius: 7px; font-size: 13px;
+      font-weight: 600; color: #F5F0EA; cursor: pointer;
+    }
+    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
 
     @media (max-width: 768px) { .sidebar { display: none; } }
   </style>
 </head>
 <body>
 
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-icon">🔍</div>
@@ -172,19 +229,16 @@
       </div>
     </div>
 
+    <button class="add-btn" onclick="toggleChat()">💬 Ask AI</button>
+
     <div class="divider"></div>
 
-    <!-- Live stats -->
     <div>
       <div class="section-title">Overview</div>
       <div class="stat-row">
         <div class="stat-card">
           <div class="stat-value" id="val-total">—</div>
           <div class="stat-label">Applications</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="val-pending">—</div>
-          <div class="stat-label">Pending</div>
         </div>
         <div class="stat-card">
           <div class="stat-value" id="val-countries">—</div>
@@ -195,100 +249,248 @@
 
     <div class="divider"></div>
 
-    <!-- Feedback pie -->
     <div>
-      <div class="section-title">Feedback Status</div>
-      <div class="chart-block">
-        <canvas id="chartFeedback"></canvas>
-      </div>
+      <div class="section-title">Work Type</div>
+      <div class="chart-block"><canvas id="chartWorktype"></canvas></div>
     </div>
 
-    <!-- Country bar -->
     <div>
       <div class="section-title">Top Countries</div>
-      <div class="chart-block">
-        <canvas id="chartCountries"></canvas>
-      </div>
+      <div class="chart-block countries-block"><canvas id="chartCountries"></canvas></div>
     </div>
 
-    <div class="powered">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-      Real-time · <span>Live DB</span>
-    </div>
   </aside>
 
+  <!-- Main -->
   <main class="main">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title">Job Track Assistant</div>
-        <div class="topbar-sub">Ask anything about your applications or work permits</div>
+    <!-- List header -->
+    <div style="padding:14px 24px 0;flex-shrink:0;">
+      <button class="ask-ai-btn" onclick="openModal()">+ 新增申请记录</button>
+    </div>
+
+    <!-- Table header -->
+    <div class="list-header">
+      <span style="flex:2">公司</span>
+      <span style="flex:2">职位</span>
+      <span style="flex:1">地点</span>
+      <span style="flex:1">工作类型</span>
+      <span style="flex:1">链接</span>
+      <span style="flex:1">申请时间</span>
+      <span style="flex:1">反馈</span>
+    </div>
+
+    <!-- Applications list -->
+    <div class="list-area" id="listArea">
+      <div style="color:#9ca3af;font-size:13px;text-align:center;padding:40px 0;">加载中...</div>
+    </div>
+
+    <!-- Chat overlay -->
+    <aside class="chat-sidebar hidden" id="chatSidebar">
+      <div class="chat-iframe-wrap">
+        <iframe id="chatIframe" src="http://localhost/chatbot/aPeOSTemhgI3UTkK" allow="microphone"></iframe>
       </div>
-      <div class="status-dot"><div class="dot"></div>Online</div>
-    </div>
-    <div class="chat-container">
-      <iframe src="http://localhost/chatbot/aPeOSTemhgI3UTkK" allow="microphone"></iframe>
-    </div>
+    </aside>
   </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h2 id="modalTitle">新增申请记录</h2>
+      <div class="form-row">
+        <label>公司名称 *</label>
+        <input id="f-company" type="text" placeholder="e.g. Spotify">
+      </div>
+      <div class="form-row">
+        <label>职位 *</label>
+        <input id="f-position" type="text" placeholder="e.g. Product Manager">
+      </div>
+      <div class="form-row">
+        <label>投递日期</label>
+        <input id="f-date" type="date">
+      </div>
+      <div class="form-row">
+        <label>国家 / 地区</label>
+        <input id="f-location" type="text" placeholder="e.g. Netherlands">
+      </div>
+      <div class="form-row">
+        <label>工作类型</label>
+        <select id="f-worktype" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:7px;font-size:13px;color:#111827;outline:none;background:#fff;">
+          <option value="Remote">Remote</option>
+          <option value="Onsite">Onsite</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>职位链接</label>
+        <input id="f-link" type="url" placeholder="https://...">
+      </div>
+      <div class="form-row">
+        <label>反馈</label>
+        <select id="f-feedback" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:7px;font-size:13px;color:#111827;outline:none;background:#fff;">
+          <option value="">No Response</option>
+          <option value="Fail">Rejected</option>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="closeModal()">取消</button>
+        <button class="btn-save" id="btnSave" onclick="saveApplication()">保存</button>
+      </div>
+    </div>
+  </div>
 
 <script>
 const API = 'http://localhost:8000';
 
+function badgeHtml(feedback) {
+  if (!feedback) return '<span class="app-badge badge-pending">No Response</span>';
+  if (feedback.toLowerCase() === 'fail') return '<span class="app-badge badge-fail">Rejected</span>';
+  return `<span class="app-badge badge-offer">${feedback}</span>`;
+}
+
+function cardHtml(app, isNew = false) {
+  const date = app.applied_date ? app.applied_date.slice(0,10) : '—';
+  const linkHtml = app.link
+    ? `<a href="${app.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ 链接</a>`
+    : '<span style="font-size:12px;color:#d1d5db;">—</span>';
+  return `
+    <div class="app-card ${isNew ? 'new-card' : ''}" onclick='openEdit(${JSON.stringify(app)})' style="cursor:pointer;">
+      <span class="col-company">${app.company || '—'}</span>
+      <span class="col-position">${app.position || '—'}</span>
+      <span class="col-location">${app.location || '—'}</span>
+      <span class="col-worktype">${app.work_type || '—'}</span>
+      <span class="col-link">${linkHtml}</span>
+      <span class="col-date">${date}</span>
+      <span class="col-feedback">${badgeHtml(app.feedback)}</span>
+    </div>`;
+}
+
+async function loadApplications() {
+  const data = await fetch(`${API}/applications`).then(r => r.json());
+  const area = document.getElementById('listArea');
+  if (data.length === 0) {
+    area.innerHTML = '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:40px 0;">暂无申请记录</div>';
+    return;
+  }
+  area.innerHTML = data.map(a => cardHtml(a)).join('');
+}
+
 async function loadStats() {
   const s = await fetch(`${API}/stats/summary`).then(r => r.json());
   document.getElementById('val-total').textContent     = s.total;
-  document.getElementById('val-pending').textContent   = s.pending;
   document.getElementById('val-countries').textContent = s.countries;
 }
 
-async function loadFeedbackChart() {
-  const d = await fetch(`${API}/stats/feedback`).then(r => r.json());
-  new Chart(document.getElementById('chartFeedback'), {
+let worktypeChart, countriesChart;
+
+async function loadWorktypeChart() {
+  const d = await fetch(`${API}/stats/worktype`).then(r => r.json());
+  if (worktypeChart) worktypeChart.destroy();
+  worktypeChart = new Chart(document.getElementById('chartWorktype'), {
     type: 'doughnut',
     data: {
-      labels: ['Pending', 'Rejected'],
-      datasets: [{
-        data: [d.pending, d.rejected],
-        backgroundColor: ['#6366f1', '#f87171'],
-        borderWidth: 0,
-        hoverOffset: 4
-      }]
+      labels: ['Remote', 'Onsite'],
+      datasets: [{ data: [d.remote, d.onsite], backgroundColor: ['#B8965A','#8C6A3A'], borderWidth: 0, hoverOffset: 4 }]
     },
-    options: {
-      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, color: '#6b7280', boxWidth: 12 } } },
-      cutout: '65%'
-    }
+    options: { plugins: { legend: { position:'bottom', labels:{ font:{size:11}, color:'#6b7280', boxWidth:12 } } }, cutout:'65%' }
   });
 }
 
 async function loadCountriesChart() {
   const data = await fetch(`${API}/stats/countries`).then(r => r.json());
-  new Chart(document.getElementById('chartCountries'), {
+  if (countriesChart) countriesChart.destroy();
+  countriesChart = new Chart(document.getElementById('chartCountries'), {
     type: 'bar',
     data: {
       labels: data.map(d => d.location),
-      datasets: [{
-        data: data.map(d => d.count),
-        backgroundColor: '#6366f1',
-        borderRadius: 4,
-        borderSkipped: false
-      }]
+      datasets: [{ data: data.map(d => d.count), backgroundColor:'#B8965A', borderRadius:4, borderSkipped:false }]
     },
     options: {
       indexAxis: 'y',
-      plugins: { legend: { display: false } },
+      maintainAspectRatio: false,
+      plugins: { legend: { display:false } },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9ca3af' } },
-        y: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#374151' } }
+        x: { grid:{display:false}, ticks:{font:{size:10}, color:'#9ca3af'} },
+        y: { grid:{display:false}, ticks:{font:{size:10}, color:'#374151'} }
       }
     }
   });
 }
 
+function toggleChat() {
+  document.getElementById('chatSidebar').classList.toggle('hidden');
+}
+
+let editingId = null;
+
+function openModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '新增申请记录';
+  document.getElementById('btnSave').textContent = '保存';
+  ['f-company','f-position','f-location','f-link','f-feedback','f-worktype']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function openEdit(app) {
+  editingId = app.id;
+  document.getElementById('modalTitle').textContent = '编辑申请记录';
+  document.getElementById('btnSave').textContent = '更新';
+  document.getElementById('f-company').value   = app.company || '';
+  document.getElementById('f-position').value  = app.position || '';
+  document.getElementById('f-date').value       = app.applied_date || '';
+  document.getElementById('f-location').value  = app.location || '';
+  document.getElementById('f-link').value       = app.link || '';
+  document.getElementById('f-feedback').value  = app.feedback || '';
+  document.getElementById('f-worktype').value  = app.work_type || '';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  editingId = null;
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+async function saveApplication() {
+  const company  = document.getElementById('f-company').value.trim();
+  const position = document.getElementById('f-position').value.trim();
+  if (!company || !position) { alert('公司名称和职位为必填项'); return; }
+
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  const body = {
+    company, position,
+    applied_date: document.getElementById('f-date').value || null,
+    location:     document.getElementById('f-location').value.trim() || null,
+    link:         document.getElementById('f-link').value.trim() || null,
+    feedback:     document.getElementById('f-feedback').value.trim() || null,
+    work_type:    document.getElementById('f-worktype').value || null,
+  };
+
+  const url    = editingId ? `${API}/applications/${editingId}` : `${API}/applications`;
+  const method = editingId ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  btn.disabled = false; btn.textContent = editingId ? '更新' : '保存';
+
+  if (res.ok) {
+    closeModal();
+    await loadApplications();
+    loadStats();
+  } else {
+    alert('保存失败，请重试');
+  }
+}
+
+loadApplications();
 loadStats();
-loadFeedbackChart();
+loadWorktypeChart();
 loadCountriesChart();
-
-
 </script>
 </body>
 </html>
