@@ -95,7 +95,7 @@
 - **左侧栏**：JobTrack AI logo、Ask AI 按钮、总投递数 / 国家数统计卡、Work Type 环形图、Top Countries 柱状图（前 10）
 - **主内容区**：申请记录列表（公司、职位、地点、工作类型、链接、申请时间、反馈），点击记录可编辑，顶部"新增申请记录"按钮（默认填入当天日期）
 - **AI 对话面板**：点击 Ask AI 展开，覆盖主内容区；内嵌 Dify Chatflow iframe，支持 Dify 原生新建对话功能
-- **设计风格**：Vogue 杂志暖米色 + 金棕色系，使用 Playfair Display 衬线字体点缀
+- **设计风格**：亮色主题，紫色（#6366f1）主色调，No Response 徽章灰色，Rejected 红色
 
 ---
 
