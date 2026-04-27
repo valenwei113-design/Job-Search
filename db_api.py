@@ -5,7 +5,7 @@ from slowapi.errors import RateLimitExceeded
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import psycopg2
 import psycopg2.extras
 import re
@@ -94,6 +94,9 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 _origins_env = os.environ.get("ALLOWED_ORIGINS", "")
 ALLOWED_ORIGINS = [o.strip() for o in _origins_env.split(",") if o.strip()]
+if not ALLOWED_ORIGINS:
+    import warnings
+    warnings.warn("ALLOWED_ORIGINS is not set — all CORS requests will be blocked");
 
 app.add_middleware(
     CORSMiddleware,
@@ -169,7 +172,7 @@ class ChatMessage(BaseModel):
     content: str
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(max_length=500)
     history: Optional[List[ChatMessage]] = []
 
 # ── Auth helpers ──
@@ -282,25 +285,27 @@ def get_applications(user_id: int = Depends(get_current_user)):
 
 @app.post("/applications")
 def add_application(req: ApplicationRequest, user_id: int = Depends(get_current_user)):
+    conn = get_db()
+    cur = conn.cursor()
     try:
-        conn = get_db()
-        cur = conn.cursor()
         cur.execute("""
             INSERT INTO job_applications (company, position, applied_date, location, link, feedback, work_type, user_id)
             VALUES (%s, %s, %s::date, %s, %s, %s, %s, %s)
         """, (req.company, req.position, req.applied_date or None,
               req.location, req.link, req.feedback, req.work_type, user_id))
         conn.commit()
-        cur.close(); conn.close()
         return {"success": True}
     except Exception as e:
+        conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); conn.close()
 
 @app.put("/applications/{app_id}")
 def update_application(app_id: int, req: ApplicationRequest, user_id: int = Depends(get_current_user)):
+    conn = get_db()
+    cur = conn.cursor()
     try:
-        conn = get_db()
-        cur = conn.cursor()
         cur.execute("""
             UPDATE job_applications
             SET company=%s, position=%s, applied_date=%s::date,
@@ -309,10 +314,26 @@ def update_application(app_id: int, req: ApplicationRequest, user_id: int = Depe
         """, (req.company, req.position, req.applied_date or None,
               req.location, req.link, req.feedback, req.work_type, app_id, user_id))
         conn.commit()
-        cur.close(); conn.close()
         return {"success": True}
     except Exception as e:
+        conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); conn.close()
+
+@app.delete("/applications/{app_id}")
+def delete_application(app_id: int, user_id: int = Depends(get_current_user)):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM job_applications WHERE id=%s AND user_id=%s", (app_id, user_id))
+        conn.commit()
+        return {"success": True}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); conn.close()
 
 # ── Stats endpoints (auth required) ──
 
@@ -320,44 +341,48 @@ def update_application(app_id: int, req: ApplicationRequest, user_id: int = Depe
 def stats_summary(user_id: int = Depends(get_current_user)):
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT
-            COUNT(*) as total,
-            COUNT(*) FILTER (WHERE feedback IS NULL) as pending,
-            COUNT(DISTINCT location) as countries
-        FROM job_applications WHERE user_id=%s
-    """, (user_id,))
-    row = dict(cur.fetchone())
-    cur.close(); conn.close()
-    return row
+    try:
+        cur.execute("""
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE feedback IS NULL) as pending,
+                COUNT(DISTINCT location) as countries
+            FROM job_applications WHERE user_id=%s
+        """, (user_id,))
+        return dict(cur.fetchone())
+    finally:
+        cur.close(); conn.close()
 
 @app.get("/stats/countries")
 def stats_countries(user_id: int = Depends(get_current_user)):
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT location, COUNT(*) as count
-        FROM job_applications
-        WHERE user_id=%s AND location IS NOT NULL AND location != 'NaN'
-        GROUP BY location ORDER BY count DESC LIMIT 5
-    """, (user_id,))
-    rows = [dict(r) for r in cur.fetchall()]
-    cur.close(); conn.close()
-    return rows
+    try:
+        cur.execute("""
+            SELECT location, COUNT(*) as count
+            FROM job_applications
+            WHERE user_id=%s AND location IS NOT NULL AND location != '' AND location != 'NaN'
+            GROUP BY location ORDER BY count DESC LIMIT 5
+        """, (user_id,))
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        cur.close(); conn.close()
 
 @app.get("/stats/worktype")
 def stats_worktype(user_id: int = Depends(get_current_user)):
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT
-            COUNT(*) FILTER (WHERE work_type = 'Remote') as remote,
-            COUNT(*) FILTER (WHERE work_type = 'Onsite') as onsite
-        FROM job_applications WHERE user_id=%s
-    """, (user_id,))
-    row = dict(cur.fetchone())
-    cur.close(); conn.close()
-    return row
+    try:
+        cur.execute("""
+            SELECT
+                COUNT(*) FILTER (WHERE work_type = 'Remote') as remote,
+                COUNT(*) FILTER (WHERE work_type = 'Onsite') as onsite,
+                COUNT(*) FILTER (WHERE work_type = 'Hybrid') as hybrid
+            FROM job_applications WHERE user_id=%s
+        """, (user_id,))
+        return dict(cur.fetchone())
+    finally:
+        cur.close(); conn.close()
 
 # ── Admin endpoints ──
 
@@ -365,20 +390,22 @@ def stats_worktype(user_id: int = Depends(get_current_user)):
 def admin_list_users(admin_id: int = Depends(get_admin_user)):
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT u.id, u.email, u.is_admin, u.created_at,
-               COUNT(a.id) as app_count
-        FROM users u
-        LEFT JOIN job_applications a ON a.user_id = u.id
-        GROUP BY u.id, u.email, u.is_admin, u.created_at
-        ORDER BY u.id
-    """)
-    rows = [dict(r) for r in cur.fetchall()]
-    cur.close(); conn.close()
-    for r in rows:
-        if r['created_at']:
-            r['created_at'] = r['created_at'].isoformat()
-    return rows
+    try:
+        cur.execute("""
+            SELECT u.id, u.email, u.is_admin, u.created_at,
+                   COUNT(a.id) as app_count
+            FROM users u
+            LEFT JOIN job_applications a ON a.user_id = u.id
+            GROUP BY u.id, u.email, u.is_admin, u.created_at
+            ORDER BY u.id
+        """)
+        rows = [dict(r) for r in cur.fetchall()]
+        for r in rows:
+            if r['created_at']:
+                r['created_at'] = r['created_at'].isoformat()
+        return rows
+    finally:
+        cur.close(); conn.close()
 
 @app.delete("/admin/users/{uid}")
 def admin_delete_user(uid: int, admin_id: int = Depends(get_admin_user)):
@@ -402,7 +429,10 @@ def admin_toggle_admin(uid: int, admin_id: int = Depends(get_admin_user)):
     cur = conn.cursor()
     try:
         cur.execute("UPDATE users SET is_admin = NOT is_admin WHERE id=%s RETURNING is_admin", (uid,))
-        new_status = cur.fetchone()[0]
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        new_status = row[0]
         conn.commit()
         return {"is_admin": new_status}
     finally:
@@ -470,20 +500,23 @@ def admin_revoke_invite(code_id: int, admin_id: int = Depends(get_admin_user)):
 # ── Chat endpoint ──
 
 @app.post("/chat")
-def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
+@limiter.limit("30/minute")
+def chat(request: Request, req: ChatRequest, user_id: int = Depends(get_current_user)):
     # 每日调用限制
     today = datetime.utcnow().date()
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO chat_usage (user_id, date, count) VALUES (%s, %s, 1) "
-        "ON CONFLICT (user_id, date) DO UPDATE SET count = chat_usage.count + 1 "
-        "RETURNING count",
-        (user_id, today)
-    )
-    usage = cur.fetchone()[0]
-    conn.commit()
-    cur.close(); conn.close()
+    try:
+        cur.execute(
+            "INSERT INTO chat_usage (user_id, date, count) VALUES (%s, %s, 1) "
+            "ON CONFLICT (user_id, date) DO UPDATE SET count = chat_usage.count + 1 "
+            "RETURNING count",
+            (user_id, today)
+        )
+        usage = cur.fetchone()[0]
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
     if usage > CHAT_DAILY_LIMIT:
         raise HTTPException(status_code=429, detail=f"今日提问已达上限（{CHAT_DAILY_LIMIT} 次），明天再来吧")
 
@@ -500,10 +533,16 @@ def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
     sql_resp = client.chat.completions.create(
         model="deepseek-chat", messages=messages, temperature=0
     )
-    sql_or_reject = sql_resp.choices[0].message.content.strip()
+    raw = sql_resp.choices[0].message.content.strip()
 
     # 拒绝语直接返回
-    if not sql_or_reject.upper().lstrip().startswith("SELECT"):
+    if not raw.upper().lstrip().startswith("SELECT"):
+        return {"answer": raw, "sql": None}
+
+    # 提取第一条 SELECT 语句：去掉末尾分号及之后的多余内容
+    sql_or_reject = raw.split(";")[0].strip()
+
+    if not sql_or_reject.upper().startswith("SELECT"):
         return {"answer": sql_or_reject, "sql": None}
 
     # Step 2: 执行 SQL（安全检查）

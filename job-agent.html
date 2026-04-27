@@ -164,6 +164,14 @@
       transition: box-shadow 0.15s;
     }
     .app-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); background: #fafafa; }
+    .del-btn {
+      width: 26px; height: 26px; border-radius: 5px; border: none;
+      background: transparent; cursor: pointer; font-size: 14px;
+      color: #d1d5db; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .del-btn:hover { background: #fee2e2; color: #dc2626; }
     .app-card.new-card { animation: slideIn 0.3s ease; }
     @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
 
@@ -262,9 +270,16 @@
       padding: 7px 14px; border-radius: 7px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
       color: #fff; border: none; font-size: 12px;
-      font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+      font-weight: 600; cursor: pointer; transition: opacity 0.15s; flex-shrink: 0;
     }
     .ask-ai-btn:hover { opacity: 0.9; }
+    .search-input {
+      flex: 1; max-width: 280px; padding: 7px 12px;
+      border: 1px solid #e5e7eb; border-radius: 7px;
+      font-size: 13px; color: #111827; outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-input:focus { border-color: #6366f1; }
 
     /* ── Modal ── */
     .modal-overlay {
@@ -372,6 +387,16 @@
     }
     .admin-btn:hover { background: #ddd6fe; }
 
+    .page-btn {
+      min-width: 28px; height: 28px; padding: 0 6px;
+      border: 1px solid #e5e7eb; border-radius: 5px;
+      background: #fff; font-size: 12px; cursor: pointer;
+      color: #374151; transition: background 0.15s, color 0.15s;
+    }
+    .page-btn:hover:not(:disabled) { background: #f3f4f6; }
+    .page-btn.active { background: #6366f1; color: #fff; border-color: #6366f1; cursor: default; }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
     @media (max-width: 768px) { .sidebar { display: none; } }
   </style>
 </head>
@@ -384,7 +409,7 @@
         <div class="auth-logo-icon">🔍</div>
         <div>
           <div class="auth-logo-text">JobTrack AI</div>
-          <div class="auth-logo-sub">Powered by DeepSeek + Dify</div>
+          <div class="auth-logo-sub">Powered by DeepSeek</div>
         </div>
       </div>
       <div id="authTitle" class="auth-title">登录账号</div>
@@ -419,7 +444,7 @@
         <div class="logo-icon">🔍</div>
         <div>
           <div class="logo-text">JobTrack AI</div>
-          <div class="logo-sub">Powered by DeepSeek + Dify</div>
+          <div class="logo-sub">Powered by DeepSeek</div>
         </div>
       </div>
 
@@ -442,7 +467,7 @@
           </div>
           <div class="stat-card">
             <div class="stat-value" id="val-countries">—</div>
-            <div class="stat-label">Countries</div>
+            <div class="stat-label">Locations</div>
           </div>
         </div>
       </div>
@@ -463,8 +488,9 @@
 
     <!-- Main -->
     <main class="main">
-      <div style="padding:14px 24px 0;flex-shrink:0;">
+      <div style="padding:14px 24px 0;flex-shrink:0;display:flex;gap:10px;align-items:center;">
         <button class="ask-ai-btn" onclick="openModal()">+ 新增申请记录</button>
+        <input class="search-input" id="searchInput" type="text" placeholder="搜索公司或职位..." oninput="filterApplications()">
       </div>
 
       <!-- Table header -->
@@ -474,8 +500,9 @@
         <span style="flex:1">地点</span>
         <span style="flex:1">工作类型</span>
         <span style="flex:1">链接</span>
-        <span style="flex:1">申请时间</span>
+        <span style="flex:1;cursor:pointer;user-select:none;" onclick="toggleSort()" id="sortHeader">申请时间 <span id="sortIcon">↓</span></span>
         <span style="flex:1">反馈</span>
+        <span style="width:26px;flex-shrink:0"></span>
       </div>
 
       <!-- Applications list -->
@@ -483,12 +510,15 @@
         <div style="color:#9ca3af;font-size:13px;text-align:center;padding:40px 0;">加载中...</div>
       </div>
 
+      <!-- Pagination -->
+      <div id="pagination" style="padding:8px 24px 12px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px;"></div>
+
       <!-- Chat overlay -->
       <aside class="chat-sidebar hidden" id="chatSidebar">
         <div class="chat-topbar">
           <span class="chat-topbar-title">💬 Ask AI</span>
           <div class="chat-topbar-actions">
-            <button class="chat-icon-btn" onclick="clearChat()" title="清空对话">↺</button>
+            <button onclick="clearChat()" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:5px;background:#fff;font-size:12px;color:#6b7280;cursor:pointer;transition:background 0.15s,color 0.15s;" onmouseover="this.style.background='#fee2e2';this.style.color='#dc2626'" onmouseout="this.style.background='#fff';this.style.color='#6b7280'">清空对话</button>
             <button class="chat-icon-btn" onclick="toggleChat()" title="关闭">✕</button>
           </div>
         </div>
@@ -501,6 +531,7 @@
               <button class="chat-suggestion" onclick="sendSuggestion(this)">哪个地点投递最多？</button>
               <button class="chat-suggestion" onclick="sendSuggestion(this)">有多少家公司没有回复？</button>
               <button class="chat-suggestion" onclick="sendSuggestion(this)">Remote和Onsite各投了多少？</button>
+              <button class="chat-suggestion" onclick="sendSuggestion(this)">挪威的工作许可要求是什么？</button>
             </div>
           </div>
         </div>
@@ -612,7 +643,9 @@
   </div>
 
 <script>
-const API = 'http://localhost:8000';
+const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8000'
+  : `${window.location.protocol}//${window.location.hostname}:8000`;
 
 // ── Auth helpers ──
 
@@ -729,26 +762,35 @@ document.addEventListener('keydown', e => {
 
 // ── App logic ──
 
+const appCache = new Map();
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function badgeHtml(feedback) {
   if (!feedback) return '<span class="app-badge badge-pending">No Response</span>';
   if (feedback.toLowerCase() === 'fail') return '<span class="app-badge badge-fail">Rejected</span>';
-  return `<span class="app-badge badge-offer">${feedback}</span>`;
+  return `<span class="app-badge badge-offer">${esc(feedback)}</span>`;
 }
 
 function cardHtml(app, isNew = false) {
+  appCache.set(app.id, app);
   const date = app.applied_date ? app.applied_date.slice(0,10) : '—';
-  const linkHtml = app.link
-    ? `<a href="${app.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ 链接</a>`
+  const safeLink = app.link && /^https?:\/\//i.test(app.link);
+  const linkHtml = safeLink
+    ? `<a href="${esc(app.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ 链接</a>`
     : '<span style="font-size:12px;color:#d1d5db;">—</span>';
   return `
-    <div class="app-card ${isNew ? 'new-card' : ''}" onclick='openEdit(${JSON.stringify(app)})' style="cursor:pointer;">
-      <span class="col-company">${app.company || '—'}</span>
-      <span class="col-position">${app.position || '—'}</span>
-      <span class="col-location">${app.location || '—'}</span>
-      <span class="col-worktype">${app.work_type || '—'}</span>
+    <div class="app-card ${isNew ? 'new-card' : ''}" onclick="openEdit(${app.id})" style="cursor:pointer;">
+      <span class="col-company">${esc(app.company) || '—'}</span>
+      <span class="col-position">${esc(app.position) || '—'}</span>
+      <span class="col-location">${esc(app.location) || '—'}</span>
+      <span class="col-worktype">${esc(app.work_type) || '—'}</span>
       <span class="col-link">${linkHtml}</span>
       <span class="col-date">${date}</span>
       <span class="col-feedback">${badgeHtml(app.feedback)}</span>
+      <button class="del-btn" onclick="event.stopPropagation(); deleteApplication(${app.id})" title="删除">✕</button>
     </div>`;
 }
 
@@ -761,16 +803,96 @@ async function apiFetch(path, options = {}) {
   return res;
 }
 
+let allApps = [];
+let filteredApps = [];
+let sortOrder = 'desc';
+let currentPage = 1;
+const PAGE_SIZE = 20;
+
 async function loadApplications() {
   const res = await apiFetch('/applications');
   if (!res) return;
-  const data = await res.json();
+  allApps = await res.json();
+  filterApplications();
+}
+
+function toggleSort() {
+  sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+  document.getElementById('sortIcon').textContent = sortOrder === 'desc' ? '↓' : '↑';
+  filterApplications();
+}
+
+function filterApplications() {
+  const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+  filteredApps = q
+    ? allApps.filter(a =>
+        (a.company  || '').toLowerCase().includes(q) ||
+        (a.position || '').toLowerCase().includes(q))
+    : [...allApps];
+  filteredApps.sort((a, b) => {
+    if (!a.applied_date && !b.applied_date) return 0;
+    if (!a.applied_date) return 1;
+    if (!b.applied_date) return -1;
+    return sortOrder === 'desc'
+      ? b.applied_date.localeCompare(a.applied_date)
+      : a.applied_date.localeCompare(b.applied_date);
+  });
+  currentPage = 1;
+  renderPage();
+}
+
+function renderPage() {
   const area = document.getElementById('listArea');
-  if (data.length === 0) {
-    area.innerHTML = '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:40px 0;">暂无申请记录</div>';
+  if (filteredApps.length === 0) {
+    const q = (document.getElementById('searchInput')?.value || '').trim();
+    area.innerHTML = `<div style="color:#9ca3af;font-size:13px;text-align:center;padding:40px 0;">${q ? '没有匹配的记录' : '暂无申请记录'}</div>`;
+    document.getElementById('pagination').innerHTML = '';
     return;
   }
-  area.innerHTML = data.map(a => cardHtml(a)).join('');
+  const start = (currentPage - 1) * PAGE_SIZE;
+  area.innerHTML = filteredApps.slice(start, start + PAGE_SIZE).map(a => cardHtml(a)).join('');
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = filteredApps.length;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end = Math.min(currentPage * PAGE_SIZE, total);
+
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== '…') {
+      pages.push('…');
+    }
+  }
+
+  const pageButtons = pages.map(p =>
+    p === '…'
+      ? `<span style="color:#9ca3af;padding:0 2px;font-size:12px">···</span>`
+      : `<button class="page-btn${p === currentPage ? ' active' : ''}" onclick="goToPage(${p})">${p}</button>`
+  ).join('');
+
+  el.innerHTML = `
+    <span style="font-size:12px;color:#9ca3af">第 ${start}–${end} 条，共 ${total} 条</span>
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>
+      ${pageButtons}
+      <button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>›</button>
+    </div>`;
+}
+
+function goToPage(p) {
+  const totalPages = Math.ceil(filteredApps.length / PAGE_SIZE);
+  if (p < 1 || p > totalPages) return;
+  currentPage = p;
+  renderPage();
+  document.getElementById('listArea').scrollTop = 0;
 }
 
 async function loadStats() {
@@ -791,8 +913,8 @@ async function loadWorktypeChart() {
   worktypeChart = new Chart(document.getElementById('chartWorktype'), {
     type: 'doughnut',
     data: {
-      labels: ['Remote', 'Onsite'],
-      datasets: [{ data: [d.remote, d.onsite], backgroundColor: ['#6366f1','#10b981'], borderWidth: 0, hoverOffset: 4 }]
+      labels: ['Remote', 'Onsite', 'Hybrid'],
+      datasets: [{ data: [d.remote, d.onsite, d.hybrid], backgroundColor: ['#6366f1','#10b981','#f59e0b'], borderWidth: 0, hoverOffset: 4 }]
     },
     options: { plugins: { legend: { position:'bottom', labels:{ font:{size:11}, color:'#6b7280', boxWidth:12 } } }, cutout:'65%' }
   });
@@ -839,9 +961,10 @@ let chatHistory = [];
 function clearChat() {
   chatHistory = [];
   const msgs = document.getElementById('chatMessages');
+  const empty = document.getElementById('chatEmpty');
   msgs.innerHTML = '';
-  document.getElementById('chatEmpty').style.display = 'flex';
-  msgs.appendChild(document.getElementById('chatEmpty'));
+  empty.style.display = 'flex';
+  msgs.appendChild(empty);
 }
 
 function autoResize(el) {
@@ -925,7 +1048,9 @@ function openModal() {
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function openEdit(app) {
+function openEdit(id) {
+  const app = appCache.get(id);
+  if (!app) return;
   editingId = app.id;
   document.getElementById('modalTitle').textContent = '编辑申请记录';
   document.getElementById('btnSave').textContent = '更新';
@@ -950,7 +1075,7 @@ async function saveApplication() {
   if (!company || !position) { alert('公司名称和职位为必填项'); return; }
 
   const btn = document.getElementById('btnSave');
-  btn.disabled = true; btn.textContent = '保存中...';
+  btn.disabled = true; btn.textContent = editingId ? '更新中...' : '保存中...';
 
   const body = {
     company, position,
@@ -972,8 +1097,22 @@ async function saveApplication() {
     closeModal();
     await loadApplications();
     loadStats();
+    loadWorktypeChart();
+    loadCountriesChart();
   } else {
     alert('保存失败，请重试');
+  }
+}
+
+async function deleteApplication(id) {
+  if (!confirm('确认删除这条申请记录？此操作不可撤销。')) return;
+  const res = await apiFetch(`/applications/${id}`, { method: 'DELETE' });
+  if (res && res.ok) {
+    appCache.delete(id);
+    await loadApplications();
+    loadStats();
+    loadWorktypeChart();
+    loadCountriesChart();
   }
 }
 
