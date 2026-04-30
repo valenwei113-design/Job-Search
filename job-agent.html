@@ -998,9 +998,10 @@ const LANGS = {
     phFeedback:            '待回复 / 拒绝 / 录用...',
     phNotes:               '面试笔记、薪资信息、跟进提醒...',
     optSelect:             '— 请选择 —',
-    optRemote:             'Remote（远程）',
-    optOnsite:             'Onsite（现场）',
-    optHybrid:             'Hybrid（混合）',
+    optRemote:             '远程',
+    optOnsite:             '现场',
+    optHybrid:             '混合',
+    feedbackOptions:       ['', '拒绝', '录用', '面试', '笔试'],
     btnCancel:             '取消',
     btnSave:               '保存',
     btnUpdate:             '更新',
@@ -1171,6 +1172,7 @@ const LANGS = {
     optRemote:             'Remote',
     optOnsite:             'Onsite',
     optHybrid:             'Hybrid',
+    feedbackOptions:       ['', 'Fail', 'Offer', 'Interview', 'Online Assessment'],
     btnCancel:             'Cancel',
     btnSave:               'Save',
     btnUpdate:             'Update',
@@ -1269,6 +1271,12 @@ function applyLang() {
   document.querySelectorAll('[data-i18n-opt]').forEach(el => {
     el.textContent = t(el.dataset.i18nOpt);
   });
+  const fbValues = ['', 'Fail', 'Offer', 'Interview', 'Online Assessment'];
+  const fbLabels = t('feedbackOptions');
+  const dl = document.getElementById('feedback-options');
+  if (dl) {
+    dl.innerHTML = fbValues.map((v, i) => `<option value="${v}">${fbLabels[i]}</option>`).join('');
+  }
   const label = currentLang === 'zh' ? 'EN' : '中';
   ['langToggle','langToggleAdmin'].forEach(id => {
     const el = document.getElementById(id);
