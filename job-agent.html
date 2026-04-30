@@ -631,7 +631,7 @@
         <span style="flex:1;min-width:0" data-i18n="colLocation"></span>
         <span style="flex:0 0 90px" data-i18n="colWorkType"></span>
         <span style="flex:0 0 136px" data-i18n="colFeedback"></span>
-        <span style="width:26px;flex-shrink:0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;" data-i18n="colNotes"></span>
+        <span style="width:36px;flex-shrink:0;font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;" data-i18n="colNotes"></span>
         <span style="width:26px;flex-shrink:0"></span>
       </div>
 
@@ -1466,7 +1466,7 @@ function cardHtml(app, isNew = false) {
       <span class="col-location">${esc(app.location) || '—'}</span>
       <span class="col-worktype">${app.work_type ? (WORKTYPE_KEY[app.work_type] ? t(WORKTYPE_KEY[app.work_type]) : esc(app.work_type)) : '—'}</span>
       <span class="col-feedback">${badgeHtml(app.feedback)}</span>
-      <span style="width:26px;flex-shrink:0;font-size:13px;cursor:default;text-align:center;" onclick="event.stopPropagation()" title="${app.notes ? esc(app.notes) : ''}">${app.notes ? '📝' : ''}</span>
+      <span style="width:36px;flex-shrink:0;font-size:13px;cursor:default;text-align:center;" onclick="event.stopPropagation()" title="${app.notes ? esc(app.notes) : ''}">${app.notes ? '📝' : ''}</span>
       <button class="del-btn" onclick="event.stopPropagation(); deleteApplication(${app.id})" title="✕">✕</button>
     </div>`;
 }
