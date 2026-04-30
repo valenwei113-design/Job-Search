@@ -135,6 +135,20 @@
       cursor: pointer; font-weight: 500; flex-shrink: 0; padding-left: 8px;
     }
     .logout-btn:hover { text-decoration: underline; }
+    .chpwd-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; }
+    .chpwd-overlay.open { display:flex; }
+    .chpwd-box { background:#fff; border-radius:12px; padding:28px 24px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
+    .chpwd-box h3 { font-size:15px; font-weight:700; margin:0 0 20px; color:#111827; }
+    .chpwd-box label { font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:4px; }
+    .chpwd-box input { width:100%; box-sizing:border-box; border:1px solid #e5e7eb; border-radius:8px; padding:8px 10px; font-size:13px; margin-bottom:14px; }
+    .chpwd-box input:focus { outline:none; border-color:#6366f1; }
+    .chpwd-actions { display:flex; gap:8px; margin-top:4px; }
+    .chpwd-actions button { flex:1; padding:9px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; }
+    .chpwd-cancel { background:#f3f4f6; color:#374151; }
+    .chpwd-submit { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; }
+    .chpwd-msg { font-size:12px; margin-bottom:10px; padding:8px 10px; border-radius:6px; display:none; }
+    .chpwd-msg.error { display:block; background:#fee2e2; color:#dc2626; }
+    .chpwd-msg.success { display:block; background:#d1fae5; color:#059669; }
 
     /* ── Main ── */
     .main {
@@ -552,6 +566,7 @@
         <span class="user-email" id="userEmail">—</span>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
           <button id="langToggle" onclick="toggleLang()" style="font-size:11px;font-weight:600;color:#6b7280;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:4px;padding:2px 7px;cursor:pointer;">EN</button>
+          <button class="logout-btn" onclick="openChangePwd()" data-i18n="changePwdBtn"></button>
           <button class="logout-btn" onclick="logout()" data-i18n="logoutBtn"></button>
         </div>
       </div>
@@ -913,6 +928,17 @@ const LANGS = {
     authErrorDefault:      '操作失败，请重试',
 
     logoutBtn:             '退出',
+    changePwdBtn:          '改密码',
+    chpwdTitle:            '修改密码',
+    chpwdCurrent:          '当前密码',
+    chpwdNew:              '新密码',
+    chpwdConfirm:          '确认新密码',
+    chpwdSubmit:           '确认修改',
+    chpwdRequired:         '请填写所有字段',
+    chpwdTooShort:         '新密码至少 6 位',
+    chpwdMismatch:         '两次密码不一致',
+    chpwdSuccess:          '密码修改成功',
+    chpwdFailed:           '修改失败，请重试',
     adminBtnLabel:         '⚙️ 用户管理',
     sectionOverview:       '概览',
     statApplications:      '投递总数',
@@ -1062,6 +1088,17 @@ const LANGS = {
     authErrorDefault:      'Operation failed. Please try again',
 
     logoutBtn:             'Sign Out',
+    changePwdBtn:          'Change Password',
+    chpwdTitle:            'Change Password',
+    chpwdCurrent:          'Current Password',
+    chpwdNew:              'New Password',
+    chpwdConfirm:          'Confirm New Password',
+    chpwdSubmit:           'Update Password',
+    chpwdRequired:         'Please fill in all fields',
+    chpwdTooShort:         'New password must be at least 6 characters',
+    chpwdMismatch:         'Passwords do not match',
+    chpwdSuccess:          'Password updated successfully',
+    chpwdFailed:           'Update failed, please try again',
     adminBtnLabel:         '⚙️ User Management',
     sectionOverview:       'Overview',
     statApplications:      'Applications',
@@ -2069,6 +2106,56 @@ if (getToken()) {
 } else {
   showAuth();
 }
+
+function openChangePwd() {
+  document.getElementById('chpwdMsg').className = 'chpwd-msg';
+  document.getElementById('chpwdMsg').textContent = '';
+  ['chpwdCurrent','chpwdNew','chpwdConfirm'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('chpwdOverlay').classList.add('open');
+  document.getElementById('chpwdCurrent').focus();
+}
+function closeChangePwd() {
+  document.getElementById('chpwdOverlay').classList.remove('open');
+}
+async function submitChangePwd() {
+  const current = document.getElementById('chpwdCurrent').value;
+  const newPwd  = document.getElementById('chpwdNew').value;
+  const confirm = document.getElementById('chpwdConfirm').value;
+  const msg     = document.getElementById('chpwdMsg');
+  const btn     = document.getElementById('chpwdSubmitBtn');
+  msg.className = 'chpwd-msg';
+  if (!current || !newPwd || !confirm) { msg.className = 'chpwd-msg error'; msg.textContent = t('chpwdRequired'); return; }
+  if (newPwd.length < 6)               { msg.className = 'chpwd-msg error'; msg.textContent = t('chpwdTooShort'); return; }
+  if (newPwd !== confirm)              { msg.className = 'chpwd-msg error'; msg.textContent = t('chpwdMismatch'); return; }
+  btn.disabled = true;
+  const res = await apiFetch('/auth/change-password', { method: 'PATCH', body: JSON.stringify({ current_password: current, new_password: newPwd }) });
+  btn.disabled = false;
+  if (!res) return;
+  if (res.ok) {
+    msg.className = 'chpwd-msg success'; msg.textContent = t('chpwdSuccess');
+    setTimeout(closeChangePwd, 1500);
+  } else {
+    const d = await res.json().catch(() => ({}));
+    msg.className = 'chpwd-msg error'; msg.textContent = d.detail || t('chpwdFailed');
+  }
+}
 </script>
+
+<div class="chpwd-overlay" id="chpwdOverlay" onclick="if(event.target===this)closeChangePwd()">
+  <div class="chpwd-box">
+    <h3 data-i18n="chpwdTitle"></h3>
+    <div id="chpwdMsg" class="chpwd-msg"></div>
+    <label data-i18n="chpwdCurrent"></label>
+    <input id="chpwdCurrent" type="password">
+    <label data-i18n="chpwdNew"></label>
+    <input id="chpwdNew" type="password">
+    <label data-i18n="chpwdConfirm"></label>
+    <input id="chpwdConfirm" type="password" onkeydown="if(event.key==='Enter')submitChangePwd()">
+    <div class="chpwd-actions">
+      <button class="chpwd-cancel" onclick="closeChangePwd()" data-i18n="btnCancel"></button>
+      <button class="chpwd-submit" id="chpwdSubmitBtn" onclick="submitChangePwd()" data-i18n="chpwdSubmit"></button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

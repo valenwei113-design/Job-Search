@@ -187,6 +187,10 @@ class AuthRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     new_password: str
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=6)
+
 class FeedbackRequest(BaseModel):
     category: str = Field(default="other", max_length=50)
     content: str = Field(min_length=1, max_length=2000)
@@ -285,6 +289,21 @@ def login(request: Request, req: AuthRequest):
         if not row or not verify_password(req.password, row[1]):
             raise HTTPException(status_code=401, detail="Invalid email or password")
         return {"token": create_token(row[0], row[2]), "email": req.email, "is_admin": row[2]}
+    finally:
+        cur.close(); conn.close()
+
+@app.patch("/auth/change-password")
+def change_password(req: ChangePasswordRequest, user_id: int = Depends(get_current_user)):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT password_hash FROM users WHERE id=%s", (user_id,))
+        row = cur.fetchone()
+        if not row or not verify_password(req.current_password, row[0]):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (hash_password(req.new_password), user_id))
+        conn.commit()
+        return {"success": True}
     finally:
         cur.close(); conn.close()
 
