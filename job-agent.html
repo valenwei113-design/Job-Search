@@ -872,6 +872,10 @@
           <option value="Online Assessment">
         </datalist>
       </div>
+      <div class="form-row">
+        <label data-i18n="labelNotes"></label>
+        <textarea id="f-notes" rows="3" placeholder="Interview notes, salary info, follow-up reminders..." style="resize:vertical;font-size:13px;padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;width:100%;box-sizing:border-box;font-family:inherit;color:#111827;"></textarea>
+      </div>
       <div class="form-actions">
         <button class="btn-cancel" onclick="closeModal()" data-i18n="btnCancel"></button>
         <button class="btn-save" id="btnSave" onclick="saveApplication()" data-i18n="btnSave"></button>
@@ -959,6 +963,7 @@ const LANGS = {
     labelWorkType:         '工作类型',
     labelLink:             '职位链接',
     labelFeedback:         '进度',
+    labelNotes:            '备注',
     btnCancel:             '取消',
     btnSave:               '保存',
     btnUpdate:             '更新',
@@ -1107,6 +1112,7 @@ const LANGS = {
     labelWorkType:         'Work Type',
     labelLink:             'Job Link',
     labelFeedback:         'Progress',
+    labelNotes:            'Notes',
     btnCancel:             'Cancel',
     btnSave:               'Save',
     btnUpdate:             'Update',
@@ -1382,6 +1388,7 @@ function cardHtml(app, isNew = false) {
       <span class="col-link">${linkHtml}</span>
       <span class="col-date">${date}</span>
       <span class="col-feedback">${badgeHtml(app.feedback)}</span>
+      ${app.notes ? `<span title="${esc(app.notes)}" style="font-size:13px;cursor:default;" onclick="event.stopPropagation()">📝</span>` : '<span style="width:18px;display:inline-block;"></span>'}
       <button class="del-btn" onclick="event.stopPropagation(); deleteApplication(${app.id})" title="✕">✕</button>
     </div>`;
 }
@@ -1709,6 +1716,7 @@ function openModal() {
   document.getElementById('btnSave').textContent = t('btnSave');
   ['f-company','f-position','f-location','f-link','f-feedback','f-worktype']
     .forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('f-notes').value = '';
   document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('imgParseArea').style.display = 'none';
   document.getElementById('imgParseStatus').style.display = 'none';
@@ -1752,6 +1760,7 @@ function openEdit(id) {
   document.getElementById('f-link').value       = app.link || '';
   document.getElementById('f-feedback').value  = app.feedback || '';
   document.getElementById('f-worktype').value  = app.work_type || '';
+  document.getElementById('f-notes').value     = app.notes || '';
   document.getElementById('imgParseArea').style.display = 'none';
   document.getElementById('imgParseStatus').style.display = 'none';
   document.getElementById('modalForm').style.display = '';
@@ -1813,6 +1822,7 @@ async function saveApplication() {
     link:         document.getElementById('f-link').value.trim() || null,
     feedback:     document.getElementById('f-feedback').value.trim() || null,
     work_type:    document.getElementById('f-worktype').value || null,
+    notes:        document.getElementById('f-notes').value.trim() || null,
   };
 
   const url    = editingId ? `/applications/${editingId}` : '/applications';

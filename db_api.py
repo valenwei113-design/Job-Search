@@ -177,6 +177,7 @@ class ApplicationRequest(BaseModel):
     link: str | None = None
     feedback: str | None = None
     work_type: str | None = None
+    notes: str | None = None
 
 class AuthRequest(BaseModel):
     email: str
@@ -294,7 +295,7 @@ def get_applications(user_id: int = Depends(get_current_user)):
     conn = get_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT id, company, position, applied_date, location, link, feedback, work_type
+        SELECT id, company, position, applied_date, location, link, feedback, work_type, notes
         FROM job_applications
         WHERE user_id=%s
         ORDER BY applied_date DESC NULLS LAST, id DESC
@@ -312,10 +313,10 @@ def add_application(req: ApplicationRequest, user_id: int = Depends(get_current_
     cur = conn.cursor()
     try:
         cur.execute("""
-            INSERT INTO job_applications (company, position, applied_date, location, link, feedback, work_type, user_id)
-            VALUES (%s, %s, %s::date, %s, %s, %s, %s, %s)
+            INSERT INTO job_applications (company, position, applied_date, location, link, feedback, work_type, notes, user_id)
+            VALUES (%s, %s, %s::date, %s, %s, %s, %s, %s, %s)
         """, (req.company, req.position, req.applied_date or None,
-              req.location, req.link, req.feedback, req.work_type, user_id))
+              req.location, req.link, req.feedback, req.work_type, req.notes, user_id))
         conn.commit()
         return {"success": True}
     except Exception as e:
@@ -332,10 +333,10 @@ def update_application(app_id: int, req: ApplicationRequest, user_id: int = Depe
         cur.execute("""
             UPDATE job_applications
             SET company=%s, position=%s, applied_date=%s::date,
-                location=%s, link=%s, feedback=%s, work_type=%s
+                location=%s, link=%s, feedback=%s, work_type=%s, notes=%s
             WHERE id=%s AND user_id=%s
         """, (req.company, req.position, req.applied_date or None,
-              req.location, req.link, req.feedback, req.work_type, app_id, user_id))
+              req.location, req.link, req.feedback, req.work_type, req.notes, app_id, user_id))
         conn.commit()
         return {"success": True}
     except Exception as e:
