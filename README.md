@@ -1,4 +1,4 @@
-# JobApply Agent 
+# Offer Coming
 
 > 🌐 [中文](#中文) | [English](#english)
 
@@ -9,11 +9,17 @@
 
 ## 一、项目概述
 
-**项目名称**：JobApply Agent
+**项目名称**：Offer Coming
 
-**项目定位**：基于自然语言的求职投递情况数据分析工具，支持多用户，可小范围商用
+**项目定位**：面向求职者的 AI 全流程辅助工具，支持多用户，可小范围商用
 
-**核心功能**：用中文或英文提问，自动查询数据库并给出结构化回答；实时数据可视化看板；图片/截图 AI 自动识别并填写申请记录；在线新增、编辑、删除申请记录；搜索与排序；分页浏览；邀请码注册体系；管理员后台
+**核心功能**：
+- **主页**：登录后首屏，显示投递总数、录用/面试/待回复统计
+- **投递记录**：在线新增、编辑、删除申请记录；图片/截图 AI 自动识别填写；搜索、排序、分页；AI 对话查询数据
+- **简历优化**：上传简历 + JD，AI 匹配分析（含评分）；一键生成针对性简历；AI 对话精调简历；导出 Word / PDF / Markdown / TXT
+- **命运选择**：塔罗牌风格占卜，AI 对所选岗位给出玄学预言
+- **管理员后台**：用户管理、邀请码管理、反馈查看、数据概览
+- **双语支持**：中文 / English 一键切换
 
 ---
 
@@ -21,11 +27,12 @@
 
 | 层级 | 技术 |
 |------|------|
-| 大模型（对话） | DeepSeek V3（via API） |
+| 大模型（对话 / 分析） | DeepSeek V4 Flash（via API） |
 | 大模型（图像识别） | Claude Haiku 4.5（via Anthropic API） |
 | 后端 | Python FastAPI + uvicorn |
 | 数据库 | PostgreSQL |
 | 前端 | 纯 HTML + Chart.js |
+| 文档导出 | python-docx（Word）、fpdf2（PDF） |
 | 版本管理 | GitHub |
 
 ---
@@ -35,25 +42,20 @@
 ```
 用户浏览器
     │
-    ├── 左侧面板（HTML + Chart.js）
-    │       └── GET /stats/*  →  实时图表数据
+    ├── 主页（Tab: home）
+    │       └── 前端直接统计 allApps 数据，无额外请求
     │
-    ├── 主内容区（申请记录列表 + 搜索/排序/分页 + 在线表单）
-    │       └── GET/POST/PUT/DELETE /applications
+    ├── 投递记录（Tab: tracker）
+    │       ├── GET/POST/PUT/DELETE /applications
+    │       ├── POST /applications/parse-image  →  Claude Haiku Vision
+    │       └── POST /chat  →  DeepSeek V4 Flash（NL→SQL→NL）
     │
-    ├── AI 对话面板（自定义对话 UI，点击展开）
-    │       │
-    │       └── POST /chat（JWT 鉴权）
-    │               │
-    │               ├── DeepSeek API：自然语言 → SQL（注入 user_id）
-    │               ├── PostgreSQL 执行查询
-    │               └── DeepSeek API：查询结果 → 自然语言回复
+    ├── 简历优化（Tab: jdmatch）
+    │       ├── POST /analyze      →  DeepSeek V4 Flash（匹配分析 / 简历生成）
+    │       └── POST /export-resume →  python-docx / fpdf2 生成文件流
     │
-    └── 自动识别申请记录（上传图片或 Ctrl+V 粘贴截图）
-            │
-            └── POST /applications/parse-image（JWT 鉴权）
-                    │
-                    └── Claude Haiku 4.5 Vision：图片 → 结构化 JSON 字段
+    └── 管理员后台（adminView，仅 admin）
+            └── GET/POST/DELETE /admin/*
 ```
 
 ---
@@ -69,8 +71,9 @@
 | applied_date | DATE | 投递日期 |
 | location | TEXT | 国家 / 地区 |
 | link | TEXT | 职位链接 |
-| feedback | TEXT | 反馈结果（NULL=待回复，Fail=拒绝，Offer=录用，Interview=面试，Online Assessment=笔试） |
-| work_type | TEXT | 工作类型（Remote / Onsite / Hybrid） |
+| feedback | TEXT | 进度（NULL / No Response / Fail / Offer / Interview / Online Assessment） |
+| work_type | TEXT | Remote / Onsite / Hybrid |
+| notes | TEXT | 备注 |
 | user_id | INTEGER | 关联用户 |
 
 ### 表2：users
@@ -104,7 +107,7 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | country | TEXT | 国家 |
-| visa | TEXT | 签证/工作许可类型 |
+| visa | TEXT | 签证 / 工作许可类型 |
 | annual_salary | TEXT | 年薪门槛 |
 | permanent_residence | TEXT | 永居申请年限 |
 
@@ -126,11 +129,13 @@
 | POST | /applications | 新增申请记录 |
 | PUT | /applications/{id} | 编辑申请记录 |
 | DELETE | /applications/{id} | 删除申请记录 |
-| POST | /applications/parse-image | 上传图片，AI 识别并返回申请字段 JSON |
-| POST | /chat | AI 对话（每日限 50 次，每分钟限 30 次） |
+| POST | /applications/parse-image | 上传图片，AI 识别并返回字段 JSON |
+| POST | /chat | AI 对话查询（每日限 50 次，每分钟限 30 次） |
+| POST | /analyze | 简历分析 / 生成（每日限 100 次，每分钟限 10 次） |
+| POST | /export-resume | 导出简历文件（docx / pdf） |
 | GET | /stats/summary | 总数、地点数 |
 | GET | /stats/countries | Top 5 投递地点 |
-| GET | /stats/worktype | 工作类型分布（Remote / Onsite / Hybrid） |
+| GET | /stats/worktype | 工作类型分布 |
 
 ### 管理员接口（需要 Admin token）
 | 方法 | 路径 | 说明 |
@@ -142,16 +147,19 @@
 | GET | /admin/invite-codes | 查看邀请码列表 |
 | POST | /admin/invite-codes | 生成邀请码 |
 | DELETE | /admin/invite-codes/{id} | 撤销邀请码 |
+| GET | /admin/stats | 数据概览（用户数、今日新增、反馈数、可用邀请码） |
+| GET | /admin/feedback | 查看用户反馈 |
 
 ---
 
 ## 六、前端功能
 
-- **登录/注册页**：首次访问显示认证界面；注册需填写邀请码；登录后 token 存入 localStorage，30 天有效
-- **左侧栏**：logo、当前登录邮箱 + 退出按钮、Ask AI 按钮、管理员入口（仅管理员可见）、总投递数 / 地点数统计卡、Work Type 环形图（含 Hybrid）、Top Locations 柱状图（前 5）
-- **主内容区**：**自动识别申请记录**（点击按钮或 Ctrl+V 粘贴截图，AI 自动提取公司/职位/地点/链接等字段）、手动新增申请记录、搜索框（按公司名/职位名实时过滤）、申请时间排序（点击列标题切换升/降序）、分页（每页 10 条）、点击记录编辑、每条记录可删除
-- **AI 对话面板**：支持多轮对话，内置示例问题，每日限 50 次，拒绝回答与求职无关的问题
-- **管理员后台**：用户管理（删除、切换权限、重置密码）+ 邀请码管理（生成、复制、撤销）
+- **登录 / 注册**：首次访问显示认证界面；注册需邀请码；登录后 token 存入 localStorage，30 天有效
+- **主页（宅）**：登录后默认进入；显示今日日期、欢迎语、投递总数 / 录用 / 面试 / 待回复四项统计卡
+- **简历优化（文）**：上传或粘贴简历（PDF / TXT / MD）；上传或粘贴 JD；匹配分析（评分 + 技能匹配 / 缺口 / ATS 关键词）；一键优化简历（AI 生成针对性版本）；AI 对话精调简历内容；导出 Word / PDF / Markdown / TXT
+- **投递记录（录）**：图片 / 截图 AI 自动识别新增；手动新增；搜索、排序、分页（每页 30 条）；点击记录编辑；备注字段；AI 对话查询数据
+- **命运选择（签）**：选择一条申请记录，抽取 4 张塔罗牌，AI 给出玄学点评
+- **管理员后台**：用户管理（删除、切换权限、重置密码）、邀请码管理、用户反馈查看、数据概览
 
 ---
 
@@ -161,7 +169,7 @@
 - DeepSeek / Anthropic API Key 存于 .env，不进 git
 - 邀请码注册控制，一码一次
 - SQL 安全检查：仅允许 SELECT，强制 user_id 过滤，禁止访问非授权表
-- /chat 每用户每日 50 次、每分钟 30 次双重限流
+- /chat 每用户每日 50 次 / 每分钟 30 次；/analyze 每用户每日 100 次 / 每分钟 10 次
 - CORS 白名单控制
 - 全局错误日志写入 logs/error.log
 - 每日凌晨 2 点自动备份数据库，保留 7 天
@@ -173,7 +181,7 @@
 ```
 ~/jobtrack/
 ├── db_api.py          # FastAPI 后端
-├── job-agent.html     # 前端页面
+├── job-agent.html     # 前端单页应用
 ├── schema.sql         # 数据库建表语句
 ├── requirements.txt   # Python 依赖
 ├── .env.example       # 环境变量模板
@@ -196,8 +204,8 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/valenwei113-design/Job-Track.git
-cd Job-Track
+git clone https://github.com/valenwei113-design/JobApplyAgent.git
+cd JobApplyAgent
 
 # 2. 安装依赖
 pip install -r requirements.txt
@@ -233,11 +241,17 @@ open job-agent.html
 
 ## 1. Overview
 
-**Project Name**: JobApply Agent
+**Project Name**: Offer Coming
 
-**Purpose**: A natural-language job application tracking and analytics tool with multi-user support, suitable for small-scale deployment.
+**Purpose**: An AI-powered end-to-end job search assistant with multi-user support, suitable for small-scale deployment.
 
-**Key Features**: Query your application data in plain Chinese or English; real-time data visualization dashboard; AI-powered image/screenshot parsing to auto-fill application records; create, edit, and delete records online; search, sort, and paginate; invite-code registration system; admin panel.
+**Key Features**:
+- **Home**: Default landing page after login — shows total applications, offers, interviews, and pending stats
+- **Applications**: Add, edit, delete records; AI image/screenshot parsing; search, sort, paginate; AI chat to query your data
+- **Resume**: Upload resume + JD, AI match analysis (with score); one-click AI resume optimization; AI chat to refine the resume; export as Word / PDF / Markdown / TXT
+- **Fate**: Tarot-style AI reading for any job application
+- **Admin Panel**: User management, invite codes, feedback viewer, stats overview
+- **Bilingual**: Chinese / English toggle
 
 ---
 
@@ -245,11 +259,12 @@ open job-agent.html
 
 | Layer | Technology |
 |-------|-----------|
-| LLM (Chat) | DeepSeek V3 (via API) |
+| LLM (Chat / Analysis) | DeepSeek V4 Flash (via API) |
 | LLM (Image Recognition) | Claude Haiku 4.5 (via Anthropic API) |
 | Backend | Python FastAPI + uvicorn |
 | Database | PostgreSQL |
 | Frontend | Vanilla HTML + Chart.js |
+| Document Export | python-docx (Word), fpdf2 (PDF) |
 | Version Control | GitHub |
 
 ---
@@ -259,25 +274,20 @@ open job-agent.html
 ```
 User Browser
     │
-    ├── Left Panel (HTML + Chart.js)
-    │       └── GET /stats/*  →  live chart data
+    ├── Home Tab
+    │       └── Stats computed client-side from loaded data (no extra requests)
     │
-    ├── Main Area (application list + search/sort/pagination + form)
-    │       └── GET/POST/PUT/DELETE /applications
+    ├── Applications Tab
+    │       ├── GET/POST/PUT/DELETE /applications
+    │       ├── POST /applications/parse-image  →  Claude Haiku Vision
+    │       └── POST /chat  →  DeepSeek V4 Flash (NL→SQL→NL)
     │
-    ├── AI Chat Panel (collapsible)
-    │       │
-    │       └── POST /chat (JWT auth)
-    │               │
-    │               ├── DeepSeek API: natural language → SQL (user_id injected)
-    │               ├── PostgreSQL executes query
-    │               └── DeepSeek API: results → natural language reply
+    ├── Resume Tab
+    │       ├── POST /analyze       →  DeepSeek V4 Flash (match analysis / resume generation)
+    │       └── POST /export-resume →  python-docx / fpdf2 file stream
     │
-    └── Auto-Parse (upload image or Ctrl+V paste screenshot)
-            │
-            └── POST /applications/parse-image (JWT auth)
-                    │
-                    └── Claude Haiku 4.5 Vision: image → structured JSON fields
+    └── Admin View (admin only)
+            └── GET/POST/DELETE /admin/*
 ```
 
 ---
@@ -293,8 +303,9 @@ User Browser
 | applied_date | DATE | Application date |
 | location | TEXT | Country / Region |
 | link | TEXT | Job posting URL |
-| feedback | TEXT | Status (NULL=Pending, Fail, Offer, Interview, Online Assessment) |
+| feedback | TEXT | Status (NULL / No Response / Fail / Offer / Interview / Online Assessment) |
 | work_type | TEXT | Remote / Onsite / Hybrid |
+| notes | TEXT | Notes |
 | user_id | INTEGER | Owner (foreign key) |
 
 ### Table 2: users
@@ -351,7 +362,9 @@ User Browser
 | PUT | /applications/{id} | Update application |
 | DELETE | /applications/{id} | Delete application |
 | POST | /applications/parse-image | Upload image, AI extracts fields as JSON |
-| POST | /chat | AI chat (50/day, 30/min per user) |
+| POST | /chat | AI chat query (50/day, 30/min per user) |
+| POST | /analyze | Resume match / generation (100/day, 10/min per user) |
+| POST | /export-resume | Export resume file (docx or pdf) |
 | GET | /stats/summary | Total applications & locations |
 | GET | /stats/countries | Top 5 locations |
 | GET | /stats/worktype | Work type distribution |
@@ -366,16 +379,19 @@ User Browser
 | GET | /admin/invite-codes | List invite codes |
 | POST | /admin/invite-codes | Generate invite code |
 | DELETE | /admin/invite-codes/{id} | Revoke invite code |
+| GET | /admin/stats | Overview (users, new today, feedback, available invites) |
+| GET | /admin/feedback | View user feedback |
 
 ---
 
 ## 6. Frontend Features
 
-- **Auth Page**: Shown on first visit; registration requires an invite code; JWT stored in localStorage for 30 days
-- **Left Sidebar**: Logo, logged-in email + sign-out, Ask AI button, admin entry (admin only), total applications / locations stats, Work Type donut chart, Top Locations bar chart (top 5)
-- **Main Area**: **Auto-parse** (click button or Ctrl+V paste a screenshot — AI extracts company, position, location, link, etc.), manual add, search (by company/position), sort by date, pagination (10 per page), inline edit, per-record delete
-- **AI Chat Panel**: Multi-turn conversation, built-in example questions, 50 queries/day limit, rejects off-topic questions
-- **Admin Panel**: User management (delete, toggle admin, reset password) + invite code management (generate, copy, revoke)
+- **Auth**: Shown on first visit; registration requires an invite code; JWT stored in localStorage for 30 days
+- **Home (宅)**: Default tab after login — today's date, welcome greeting, 4 stat cards (total / offers / interviews / pending)
+- **Resume (文)**: Upload or paste resume (PDF / TXT / MD); upload or paste JD; match analysis with score, skill gaps, and ATS keywords; one-click AI resume optimization; AI chat to refine the output; export as Word / PDF / Markdown / TXT
+- **Applications (录)**: AI image/screenshot auto-fill; manual add; search, sort by date, paginate (30/page); inline edit; notes field; AI chat to query data
+- **Fate (签)**: Select an application, draw 4 tarot cards, get an AI divination
+- **Admin Panel**: User management (delete, toggle admin, reset password), invite code management, feedback list, stats overview
 
 ---
 
@@ -385,7 +401,7 @@ User Browser
 - DeepSeek / Anthropic API keys in .env, excluded from git
 - Invite-code gated registration, one use per code
 - SQL safety: SELECT only, mandatory user_id filter, blocked unauthorized tables
-- Chat rate-limited: 50/day and 30/min per user
+- Rate limits: /chat 50/day & 30/min; /analyze 100/day & 10/min per user
 - CORS allowlist
 - Global error logging to logs/error.log
 - Automated daily DB backup at 2 AM, retained for 7 days
@@ -397,7 +413,7 @@ User Browser
 ```
 ~/jobtrack/
 ├── db_api.py          # FastAPI backend
-├── job-agent.html     # Frontend (single-page)
+├── job-agent.html     # Frontend (single-page app)
 ├── schema.sql         # Database schema
 ├── requirements.txt   # Python dependencies
 ├── .env.example       # Environment variable template
@@ -420,8 +436,8 @@ User Browser
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/valenwei113-design/Job-Track.git
-cd Job-Track
+git clone https://github.com/valenwei113-design/JobApplyAgent.git
+cd JobApplyAgent
 
 # 2. Install dependencies
 pip install -r requirements.txt
